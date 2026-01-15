@@ -16,12 +16,17 @@ def send_daily_report(new_questions):
     
     # "onboarding@resend.dev" only works if you verify logic or use their test mode to ONLY your own email.
     # It allows sending to the email registered with Resend account.
-    email_from = os.getenv("EMAIL_FROM", "onboarding@resend.dev")
+    email_from = os.getenv("EMAIL_FROM")
+    if not email_from:
+        email_from = "onboarding@resend.dev"
+        
     email_to = os.getenv("EMAIL_TO")
     
     if not email_to:
          print("Skipping email: Missing EMAIL_TO.")
          return
+
+    print(f"DEBUG: Sending email from '{email_from}' to '{email_to}'")
 
     # Build HTML Content
     html_content = f"""
