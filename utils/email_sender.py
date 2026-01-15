@@ -1,9 +1,5 @@
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.header import Header
 import os
-import json
+import resend
 from datetime import datetime
 
 def send_daily_report(new_questions):
@@ -11,15 +7,21 @@ def send_daily_report(new_questions):
         print("No new questions to email.")
         return
 
-    email_host = os.getenv("EMAIL_HOST", "smtp.qq.com")
-    email_port = int(os.getenv("EMAIL_PORT", 465))
-    email_user = os.getenv("EMAIL_USER")
-    email_pass = os.getenv("EMAIL_PASSWORD")
-    email_to = os.getenv("EMAIL_TO")
-
-    if not all([email_user, email_pass, email_to]):
-        print("Skipping email: Missing EMAIL_USER, EMAIL_PASSWORD, or EMAIL_TO.")
+    api_key = os.getenv("RESEND_API_KEY")
+    if not api_key:
+        print("Skipping email: Missing RESEND_API_KEY.")
         return
+
+    resend.api_key = api_key
+    
+    # "onboarding@resend.dev" only works if you verify logic or use their test mode to ONLY your own email.
+    # It allows sending to the email registered with Resend account.
+    email_from = os.getenv("EMAIL_FROM", "onboarding@resend.dev")
+    email_to = os.getenv("EMAIL_TO")
+    
+    if not email_to:
+         print("Skipping email: Missing EMAIL_TO.")
+         return
 
     # Build HTML Content
     html_content = f"""
@@ -48,23 +50,16 @@ def send_daily_report(new_questions):
     </body>
     </html>
     """
-
-    msg = MIMEMultipart()
-    msg['From'] = email_user
-    msg['To'] = email_to
-    msg['Subject'] = Header(f"【每日精选】Android 面试题更新 ({len(new_questions)}题)", 'utf-8')
-    msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+    
+    params = {
+        "from": email_from,
+        "to": [email_to],
+        "subject": f"【每日精选】Android 面试题更新 ({len(new_questions)}题)",
+        "html": html_content
+    }
 
     try:
-        if email_port == 465:
-            server = smtplib.SMTP_SSL(email_host, email_port)
-        else:
-            server = smtplib.SMTP(email_host, email_port)
-            server.starttls()
-            
-        server.login(email_user, email_pass)
-        server.sendmail(email_user, [email_to], msg.as_string())
-        server.quit()
-        print("✅ Daily report email sent successfully!")
+        email = resend.Emails.send(params)
+        print(f"✅ Daily report email sent successfully! ID: {email.get('id')}")
     except Exception as e:
         print(f"❌ Failed to send email: {e}")
