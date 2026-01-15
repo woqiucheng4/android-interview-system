@@ -17,6 +17,8 @@ def process_content():
         print("No new content to process.")
         return
 
+    new_questions = []
+
     for row in rows:
         row_id = row['id']
         title = row['title']
@@ -41,16 +43,19 @@ def process_content():
                 
                 if isinstance(questions, list):
                     for q in questions:
-                        insert_question(
-                            raw_id=row_id,
-                            question=q.get("question", "Unknown"),
-                            answer=q.get("standard_answer", "No answer provided"),
-                            follow_up=json.dumps(q.get("follow_up_questions", []), ensure_ascii=False),
-                            category=q.get("category", "General"),
-                            level=q.get("level", "Middle"),
-                            is_vip=False, # Default non-VIP
-                            source=source
-                        )
+                        q_data = {
+                            "raw_id": row_id,
+                            "question": q.get("question", "Unknown"),
+                            "answer": q.get("standard_answer", "No answer provided"),
+                            "follow_up": json.dumps(q.get("follow_up_questions", []), ensure_ascii=False),
+                            "category": q.get("category", "General"),
+                            "level": q.get("level", "Middle"),
+                            "is_vip": False,
+                            "source": source
+                        }
+                        insert_question(**q_data)
+                        new_questions.append(q_data)
+                        
                     print(f"  -> Extracted {len(questions)} questions.")
                     mark_processed(row_id)
                 else:
@@ -62,6 +67,8 @@ def process_content():
                 print(f"  -> Error saving questions: {e}")
         else:
             print("  -> AI request failed.")
+            
+    return new_questions
 
 if __name__ == "__main__":
     init_db()
